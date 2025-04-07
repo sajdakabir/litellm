@@ -43,9 +43,8 @@ def validate_environment(
     )
     
     # Use the provided API key, or fall back to environment variable
-    cohere_api_key = api_key or "LitgtFBRwgpnyF5KAaJINtLNJkx5Ty6LsFVV1IYM"
-    headers["Authorization"] = f"bearer {cohere_api_key}"
-    
+ if api_key:
+        headers["Authorization"] = f"bearer {api_key}"
     return headers
 
 
