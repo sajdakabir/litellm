@@ -52,6 +52,36 @@ def handle_cohere_chat_model_custom_llm_provider(
     return model, custom_llm_provider
 
 
+def handle_cohere_chat_v2_model_custom_llm_provider(
+    model: str, custom_llm_provider: Optional[str] = None
+) -> Tuple[str, Optional[str]]:
+    """
+    if user sets model = "cohere/command-r-plus" -> use custom_llm_provider = "cohere_chat_v2"
+
+    Args:
+        model:
+        custom_llm_provider:
+
+    Returns:
+        model, custom_llm_provider
+    """
+
+    if custom_llm_provider:
+        if custom_llm_provider == "cohere" and model in litellm.cohere_chat_v2_models:
+            return model, "cohere_chat_v2"
+
+    if "/" in model:
+        _custom_llm_provider, _model = model.split("/", 1)
+        if (
+            _custom_llm_provider
+            and _custom_llm_provider == "cohere"
+            and _model in litellm.cohere_chat_v2_models
+        ):
+            return _model, "cohere_chat_v2"
+
+    return model, custom_llm_provider
+
+
 def handle_anthropic_text_model_custom_llm_provider(
     model: str, custom_llm_provider: Optional[str] = None
 ) -> Tuple[str, Optional[str]]:
@@ -123,6 +153,10 @@ def get_llm_provider(  # noqa: PLR0915
 
         ### Handle cases when custom_llm_provider is set to cohere/command-r-plus but it should use cohere_chat route
         model, custom_llm_provider = handle_cohere_chat_model_custom_llm_provider(
+            model, custom_llm_provider
+        )
+
+        model, custom_llm_provider = handle_cohere_chat_v2_model_custom_llm_provider(
             model, custom_llm_provider
         )
 
@@ -256,6 +290,9 @@ def get_llm_provider(  # noqa: PLR0915
         ## cohere chat models
         elif model in litellm.cohere_chat_models:
             custom_llm_provider = "cohere_chat"
+        ## cohere chat v2 models
+        elif model in litellm.cohere_chat_v2_models:
+            custom_llm_provider = "cohere_chat_v2"
         ## replicate
         elif model in litellm.replicate_models or (
             ":" in model and len(model) > REPLICATE_MODEL_NAME_WITH_ID_LENGTH
