@@ -431,7 +431,7 @@ def test_completion_cohere_v2_function_call():
     print("Cohere v2 tool calling response transformation test passed")
 
 
-def test_completion_cohere_v2_streaming_tool_call():python -m pytest tests/
+def test_completion_cohere_v2_streaming_tool_call():
     """
     Test for streaming tool calling response transformation with Cohere v2 API
     Success criteria: Streaming tool calls in Cohere v2 API response should be properly transformed
@@ -631,3 +631,112 @@ def test_cohere_v2_request_body_format():
     assert "parameter_definitions" in tool, "Tool should have 'parameter_definitions' field"
     
     print("Cohere v2 request body format test passed")
+
+
+# Integration test that can be skipped
+@pytest.mark.skip(reason="Integration test requires valid API key and network connection")
+def test_cohere_v2_integration():
+    """
+    Integration test for Cohere v2 API
+    This test makes actual API calls to verify that the Cohere v2 API support is working correctly.
+    To run this test, you need to set the COHERE_API_KEY environment variable.
+    
+    This test is skipped by default. To run it, use:
+    python -m pytest tests/llm_translation/test_cohere_v2.py::test_cohere_v2_integration -v --no-skip
+    """
+    # Check if API key is set
+    api_key = os.environ.get("COHERE_API_KEY")
+    if not api_key:
+        pytest.skip("COHERE_API_KEY environment variable not set")
+    
+    try:
+        # Print the API key (masked) for debugging
+        masked_key = api_key[:4] + "*" * (len(api_key) - 8) + api_key[-4:] if len(api_key) > 8 else "****"
+        print(f"Using Cohere API key: {masked_key}")
+        
+        # Simple completion request to test basic functionality
+        print("Testing basic completion with Cohere v2 API...")
+        response = completion(
+            model="cohere_chat_v2/command",  # Using 'command' instead of 'command-r-plus'
+            messages=[{"role": "user", "content": "Hello, how are you?"}],
+            api_key=api_key  # Explicitly pass the API key
+        )
+        
+        # Verify that we got a valid response
+        assert response is not None
+        assert hasattr(response, "choices")
+        assert len(response.choices) > 0
+        assert hasattr(response.choices[0], "message")
+        assert hasattr(response.choices[0].message, "content")
+        assert response.choices[0].message.content is not None
+        assert len(response.choices[0].message.content) > 0
+        
+        print("Cohere v2 basic integration test passed")
+        
+        # Test with tool calling
+        tools = [
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_current_weather",
+                    "description": "Get the current weather in a given location",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "location": {
+                                "type": "string",
+                                "description": "The city and state, e.g. San Francisco, CA",
+                            },
+                            "unit": {"type": "string", "enum": ["celsius", "fahrenheit"]},
+                        },
+                        "required": ["location"],
+                    },
+                },
+            }
+        ]
+        
+        response = completion(
+            model="cohere_chat_v2/command-r-plus",
+            messages=[{"role": "user", "content": "What's the weather like in Boston today?"}],
+            tools=tools,
+            tool_choice="auto"
+        )
+        
+        # Verify that we got a valid response with tool calls
+        assert response is not None
+        assert hasattr(response, "choices")
+        assert len(response.choices) > 0
+        assert hasattr(response.choices[0], "message")
+        
+        # The model might not always return tool calls, so we'll just check that the response format is valid
+        if hasattr(response.choices[0].message, "tool_calls") and response.choices[0].message.tool_calls:
+            tool_call = response.choices[0].message.tool_calls[0]
+            if isinstance(tool_call, dict):
+                assert "function" in tool_call
+                assert "name" in tool_call["function"]
+            else:
+                assert hasattr(tool_call, "function")
+                assert hasattr(tool_call.function, "name")
+        
+        print("Cohere v2 tool calling integration test passed")
+        
+        # Test streaming
+        response = completion(
+            model="cohere_chat_v2/command-r-plus",
+            messages=[{"role": "user", "content": "Count from 1 to 5"}],
+            stream=True
+        )
+        
+        # Verify that we got a valid streaming response
+        chunks = []
+        for chunk in response:
+            chunks.append(chunk)
+            assert chunk is not None
+            assert hasattr(chunk, "choices")
+            assert len(chunk.choices) > 0
+        
+        assert len(chunks) > 0
+        print("Cohere v2 streaming integration test passed")
+        
+    except Exception as e:
+        pytest.fail(f"Integration test failed with exception: {e}")
