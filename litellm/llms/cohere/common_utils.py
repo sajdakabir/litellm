@@ -42,7 +42,7 @@ def validate_environment(
         }
     )
     
-    # Use the provided API key, or fall back to environment variable
+
  if api_key:
         headers["Authorization"] = f"bearer {api_key}"
     return headers
